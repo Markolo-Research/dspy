@@ -1,5 +1,5 @@
 source=https://github.com/Markolo-Research/lm15-python.git
 version=1.2.3
-commit=57633baad35132af564f296c249a53b29558fb20
+commit=b2b8e2ac2a244d05c74de520ca34509de38437bb
 contract=8eedbae4f13dc80666024503256149a7bbf39388
-split=8d712a83888455f7136588ac26eb0b8cadd3e5d0
+split=d05709421c5c85f62b2c52bcbc191f961a7a612f
