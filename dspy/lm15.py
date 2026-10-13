@@ -27,7 +27,6 @@ from typing import Mapping as _Mapping
 from dspy._vendor.lm15 import *
 from dspy._vendor.lm15 import __all__ as _vendored_all
 from dspy._vendor.lm15.compat import AnthropicCompat, OpenAIChatCompat, OpenAIResponsesCompat
-from dspy._vendor.lm15.login import providers as providers
 from dspy._vendor.lm15.registry import ProviderDefinition
 from dspy._vendor.lm15.router import RouterConfig
 

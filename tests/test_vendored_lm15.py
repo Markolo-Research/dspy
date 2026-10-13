@@ -13,16 +13,13 @@ def test_public_exports_are_the_vendored_objects():
     import dspy
     from dspy import lm15
     from dspy._vendor import lm15 as vendored
-    from dspy._vendor.lm15.login import providers
     from dspy.lm15 import Request
 
     assert importlib.import_module("dspy.lm15") is dspy.lm15
     assert Request is vendored.Request
-    # The provider descriptors come from login: the vendor root's name
-    # collides with its transport-provider package.
     assert lm15.__all__[: len(vendored.__all__)] == vendored.__all__
     for name in vendored.__all__:
-        assert getattr(lm15, name) is (providers if name == "providers" else getattr(vendored, name))
+        assert getattr(lm15, name) is getattr(vendored, name)
     assert lm15.providers.xai.id == "xai"
     assert lm15.providers.openai_codex.id == "openai-codex"
     assert set(lm15.__all__) - set(vendored.__all__) == {
@@ -69,7 +66,7 @@ def test_vendored_lm15_carries_provenance_and_license():
     pkg = Path(lm15.__file__).parent
     assert (pkg / "py.typed").is_file()
     marker = dict(line.split("=", 1) for line in (pkg.parent / "lm15-provenance.txt").read_text().splitlines())
-    assert marker["source"] == "https://github.com/cmpnd-ai/lm15-python.git"
+    assert marker["source"] == "https://github.com/Markolo-Research/lm15-python.git"
     assert marker["version"] == lm15.__version__ != "0.0.0"
     for key in ("commit", "contract", "split"):
         assert len(marker[key]) == 40
