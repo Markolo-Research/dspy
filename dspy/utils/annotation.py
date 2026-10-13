@@ -3,7 +3,7 @@ import re
 import types
 from typing import Callable, TypeVar, overload
 
-T = TypeVar("T")
+T = TypeVar("T", bound=Callable[..., object] | property)
 
 
 @overload
@@ -41,6 +41,7 @@ def experimental(
 
 def _experimental(api: T, version: str | None = None) -> T:
     """Add experimental notice to the API's docstring."""
+    original: T = api
     if inspect.isclass(api):
         api_type = "class"
     elif inspect.isfunction(api):
@@ -57,7 +58,7 @@ def _experimental(api: T, version: str | None = None) -> T:
     version_text = f" (introduced in v{version})" if version else ""
     notice = (
         indent + f"Experimental: This {api_type} may change or "
-        f"be removed in a future release without warning{version_text}."
+        + f"be removed in a future release without warning{version_text}."
     )
 
     if api_type == "property":
@@ -67,7 +68,7 @@ def _experimental(api: T, version: str | None = None) -> T:
             api.__doc__ = notice + "\n\n" + api.__doc__
         else:
             api.__doc__ = notice
-    return api
+    return original
 
 
 def _get_min_indent_of_docstring(docstring_str: str) -> str:

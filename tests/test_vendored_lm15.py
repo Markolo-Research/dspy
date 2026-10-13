@@ -13,18 +13,28 @@ def test_public_exports_are_the_vendored_objects():
     import dspy
     from dspy import lm15
     from dspy._vendor import lm15 as vendored
+    from dspy._vendor.lm15.login import providers
     from dspy.lm15 import Request
 
     assert importlib.import_module("dspy.lm15") is dspy.lm15
     assert Request is vendored.Request
-    # Every vendored export is the vendored object; the facade adds only the
-    # process-level provider registry and the compat/definition types it takes.
+    # The provider descriptors come from login: the vendor root's name
+    # collides with its transport-provider package.
     assert lm15.__all__[: len(vendored.__all__)] == vendored.__all__
     for name in vendored.__all__:
-        assert getattr(lm15, name) is getattr(vendored, name)
+        assert getattr(lm15, name) is (providers if name == "providers" else getattr(vendored, name))
+    assert lm15.providers.xai.id == "xai"
+    assert lm15.providers.openai_codex.id == "openai-codex"
     assert set(lm15.__all__) - set(vendored.__all__) == {
-        "AnthropicCompat", "ModelSupport", "OpenAIChatCompat", "OpenAIResponsesCompat", "ProviderDefinition",
-        "RegisteredProvider", "register_provider", "registered_providers", "unregister_provider",
+        "AnthropicCompat",
+        "ModelSupport",
+        "OpenAIChatCompat",
+        "OpenAIResponsesCompat",
+        "ProviderDefinition",
+        "RegisteredProvider",
+        "register_provider",
+        "registered_providers",
+        "unregister_provider",
     }
     from dspy._vendor.lm15 import compat, registry
 
@@ -40,12 +50,14 @@ def test_openai_converters_are_available_without_provider_calls():
     from dspy.lm15 import Request, Response, request_from_openai_chat, response_from_openai_chat
 
     request = request_from_openai_chat({"model": "example", "messages": [{"role": "user", "content": "Hello"}]})
-    response = response_from_openai_chat({
-        "id": "example-response",
-        "model": "example",
-        "choices": [{"index": 0, "message": {"role": "assistant", "content": "Hi"}, "finish_reason": "stop"}],
-        "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
-    })
+    response = response_from_openai_chat(
+        {
+            "id": "example-response",
+            "model": "example",
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": "Hi"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+        }
+    )
     assert isinstance(request, Request)
     assert isinstance(response, Response)
     assert response.message.text == "Hi"
@@ -108,3 +120,11 @@ assert dspy.lm15.__version__ == lm15.__version__ == vet.IMPL_VERSION == expected
 assert expected != "7.8.9"
 """
     subprocess.run([sys.executable, "-c", code, str(tmp_path)], check=True)
+
+
+def test_dspy_runtime_version_matches_installed_distribution():
+    from importlib.metadata import version
+
+    import dspy
+
+    assert dspy.__version__ == version("dspy") == "3.4.1+markolo.1"
