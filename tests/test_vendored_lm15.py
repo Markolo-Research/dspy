@@ -20,8 +20,8 @@ def test_public_exports_are_the_vendored_objects():
     assert lm15.__all__[: len(vendored.__all__)] == vendored.__all__
     for name in vendored.__all__:
         assert getattr(lm15, name) is getattr(vendored, name)
-    assert lm15.providers.xai.id == "xai"
-    assert lm15.providers.openai_codex.id == "openai-codex"
+    assert lm15.provider_descriptors.xai.id == "xai"
+    assert lm15.provider_descriptors.openai_codex.id == "openai-codex"
     assert set(lm15.__all__) - set(vendored.__all__) == {
         "AnthropicCompat",
         "ModelSupport",
