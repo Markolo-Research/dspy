@@ -8,6 +8,7 @@ Test organization:
 
 import base64
 import io
+import logging
 import sys
 from contextlib import contextmanager, redirect_stdout
 from pathlib import Path
@@ -314,7 +315,7 @@ class TestRLMInitialization:
 
         tools = RLM("context -> answer", sub_lm=MagicMock(return_value="untyped response"))._make_llm_tools()
 
-        with pytest.raises(TypeError, match="Sub-LM must return dspy.lm15.Response or a non-empty list"):
+        with pytest.raises(TypeError, match=r"Sub-LM must return dspy\.lm15\.Response or a non-empty list"):
             tools["llm_query"]("test prompt")
 
     def test_llm_query_reports_textless_response_type(self):
@@ -1989,9 +1990,11 @@ class TestRLMSubAgents:
         assert "Sub-agents (dspy)" in seen[0].instructions
         assert "unavailable" not in caplog.text
 
-    def test_interpreter_that_rejects_the_shim_as_syntax_error_runs_without_sub_agents(self, caplog):
+    def test_interpreter_that_rejects_the_shim_as_syntax_error_runs_without_sub_agents(self, caplog, monkeypatch):
         # Restricted compilers (e.g. RestrictedPython) reject the shim's `_dspy_*` names at compile time.
         from dspy.primitives import facade
+
+        monkeypatch.setattr(logging.getLogger("dspy"), "propagate", True)
 
         def execute(code, variables):
             if code == facade.SHIM_SETUP:
