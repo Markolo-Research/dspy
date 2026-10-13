@@ -181,7 +181,7 @@ async def test_predict_demos_sdk_cache_history_and_usage(transport, monkeypatch)
 
 
 @pytest.mark.asyncio
-async def test_standalone_client_callbacks_copy_and_reload(transport, tmp_path):
+async def test_standalone_client_callbacks_copy_and_reload(transport, tmp_path, monkeypatch):
     from dspy.utils.callback import BaseCallback
 
     class Calls(BaseCallback):
@@ -194,6 +194,7 @@ async def test_standalone_client_callbacks_copy_and_reload(transport, tmp_path):
         def on_lm_end(self, **kwargs):
             self.events.append("end")
 
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-only")
     callbacks = Calls()
     client = TypeSafe("jev-test", base_url="https://original.test", callbacks=[callbacks])
     assert not isinstance(client, dspy.BaseLM)
