@@ -60,7 +60,12 @@ The lowercase part-factory helpers (`text`, `image`, `tool_call`, ...) live in
 level invite collisions with user code.
 """
 
+from typing import TYPE_CHECKING
+
 from ._version import __version__
+
+if TYPE_CHECKING:
+    from .login import providers as providers
 
 # ── Canonical types ──────────────────────────────────────────────────
 from .batch import AsyncBatchJob, BatchJob
@@ -302,6 +307,10 @@ _LAZY_LOGIN = {
     "providers": (".login", "providers"),
     "connect": (".interactive", "connect"),
 }
+
+# The earlier provider imports install a package attribute under this public
+# descriptor name. Let the lazy login export own it instead.
+globals().pop("providers", None)
 
 
 def __getattr__(name: str):
