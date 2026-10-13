@@ -1,8 +1,5 @@
-source=https://github.com/cmpnd-ai/lm15-python.git
+source=https://github.com/Markolo-Research/lm15-python.git
 version=1.2.3
-commit=1304c9e5fb1584496ff9af59d24134bc9f601cb4
+commit=385e831d91a39c91ca58c426d0e78d7d3fa4a58b
 contract=8eedbae4f13dc80666024503256149a7bbf39388
-split=a20fc7a6cd5ad1323ffc693fc36f643b1d7db44e
-upstream_tag=v1.2.3
-upstream_commit=fcc367caedbeca42831e4e64578d222827baf1c1
-patches=7ff9f18aaa539ba41766886dd62f241bf0459e99,9897ee2b52b03cb87184c8a437e64614a9661a7b,1becdc1697221ae6488683296aa17654c09ddf74,3a883ec96f1d5c6166bf5079e0778a50e7676dfd
+split=3e238d37b97abad51546b2e633dda443c6889dab
