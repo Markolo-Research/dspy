@@ -76,7 +76,7 @@ import os
 import threading
 from dataclasses import dataclass, field, replace
 from types import MappingProxyType
-from typing import AsyncIterator, Iterator, Literal, Mapping, overload
+from typing import AsyncIterator, Callable, Iterator, Literal, Mapping, ParamSpec, TypeVar, overload
 
 from .result import AsyncResponseStream, ResponseStream
 
@@ -107,6 +107,10 @@ __all__ = [
     "openai_chat_model_string",
     "AsyncLMRouter",
 ]
+
+
+_P = ParamSpec("_P")
+_T = TypeVar("_T")
 
 
 # ---------------------------------------------------------------- rules ----
@@ -1592,9 +1596,12 @@ class AsyncLMRouter:
         return lm
 
     async def _alm(self, model: str):
+        return await self._construct(self.lm, model)
+
+    async def _construct(self, fn: Callable[_P, _T], *args: _P.args, **kwargs: _P.kwargs) -> _T:
         import asyncio
 
-        construction = asyncio.create_task(asyncio.to_thread(self.lm, model))
+        construction = asyncio.create_task(asyncio.to_thread(fn, *args, **kwargs))
         cancellation = None
         while not construction.done():
             try:
@@ -1653,17 +1660,13 @@ class AsyncLMRouter:
         """
         if not isinstance(stream, bool):
             raise TypeError("stream must be a boolean")
-        import asyncio
-
-        request, lm = await asyncio.to_thread(self.request_from_openai_chat, model, messages, **kwargs)
+        request, lm = await self._construct(self.request_from_openai_chat, model, messages, **kwargs)
         if stream:
             return AsyncResponseStream(lm.stream(request), request)
         return await lm.complete(request)
 
     async def stream_from_openai_chat(self, model: str, messages: object, /, **kwargs) -> AsyncIterator[StreamEvent]:
-        import asyncio
-
-        request, lm = await asyncio.to_thread(self.request_from_openai_chat, model, messages, **kwargs)
+        request, lm = await self._construct(self.request_from_openai_chat, model, messages, **kwargs)
         stream = lm.stream(request)
         try:
             async for event in stream:
