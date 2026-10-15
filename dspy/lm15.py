@@ -22,9 +22,13 @@ life, so one LM never sees two definitions of a provider.
 
 import threading as _threading
 from dataclasses import dataclass as _dataclass
+from typing import TYPE_CHECKING as _TYPE_CHECKING
 from typing import Mapping as _Mapping
 
-from dspy._vendor.lm15 import *
+if _TYPE_CHECKING:
+    from dspy._vendor.lm15 import *
+
+from dspy._vendor import lm15 as _vendored
 from dspy._vendor.lm15 import __all__ as _vendored_all
 from dspy._vendor.lm15.compat import AnthropicCompat, OpenAIChatCompat, OpenAIResponsesCompat
 from dspy._vendor.lm15.registry import ProviderDefinition
@@ -42,6 +46,22 @@ __all__ = [
     "registered_providers",
     "unregister_provider",
 ]
+
+
+# Copy already-loaded exports without forcing optional lazy modules to import.
+globals().update({name: vars(_vendored)[name] for name in _vendored_all if name in vars(_vendored)})
+
+
+def __getattr__(name):
+    if name in _vendored_all:
+        value = getattr(_vendored, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__():
+    return sorted(set(globals()) | set(__all__))
 
 
 @_dataclass(frozen=True)

@@ -125,3 +125,20 @@ def test_dspy_runtime_version_matches_installed_distribution():
     import dspy
 
     assert dspy.__version__ == version("dspy") == "3.4.1+markolo.1"
+
+
+
+def test_facade_keeps_managed_auth_lazy():
+    script = """
+import sys
+import dspy
+assert 'dspy._vendor.lm15.login' not in sys.modules
+assert 'dspy._vendor.lm15.interactive' not in sys.modules
+from dspy import lm15
+assert 'Auth' in dir(lm15)
+from dspy.lm15 import Auth
+from dspy._vendor.lm15 import Auth as canonical
+assert Auth is canonical
+assert lm15.Auth is canonical
+"""
+    subprocess.run([sys.executable, "-c", script], check=True, capture_output=True, text=True)
