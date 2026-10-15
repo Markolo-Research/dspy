@@ -195,10 +195,27 @@ class AsyncLM15Engine(_Routing):
                 yield event
 
     async def aclose(self):
-        with self._lock:
-            self._closed = True
-            self._providers.clear()
-        if self.config.transport is None:
-            await self.router.aclose()
-        else:
-            self.router._lms.clear()
+        import asyncio
+
+        def detach():
+            with self._lock:
+                self._closed = True
+                self._providers.clear()
+
+        async def finish_close():
+            await asyncio.to_thread(detach)
+            if self.config.transport is None:
+                await self.router.aclose()
+            else:
+                self.router._lms.clear()
+
+        cleanup = asyncio.create_task(finish_close())
+        cancellation = None
+        while not cleanup.done():
+            try:
+                await asyncio.wait({cleanup})
+            except asyncio.CancelledError as exc:
+                cancellation = exc
+        cleanup.result()
+        if cancellation is not None:
+            raise cancellation
