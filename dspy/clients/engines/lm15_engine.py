@@ -178,17 +178,28 @@ class AsyncLM15Engine(_Routing):
         self._init_routing(config, model_type)
         self.router = AsyncLMRouter(self.config)
 
-    async def complete(self, request: Request) -> Response:
+    async def _async_target(self, request, *, streaming=False):
         import asyncio
 
-        # Construction may load or refresh credentials synchronously.
-        provider, routed = await asyncio.to_thread(self._target, request)
+        construction = asyncio.create_task(asyncio.to_thread(self._target, request, streaming=streaming))
+        cancellation = None
+        while not construction.done():
+            try:
+                await asyncio.wait({construction})
+            except asyncio.CancelledError as exc:
+                cancellation = exc
+        if cancellation is not None:
+            if not construction.cancelled():
+                construction.exception()
+            raise cancellation
+        return construction.result()
+
+    async def complete(self, request: Request) -> Response:
+        provider, routed = await self._async_target(request)
         return await provider.complete(routed)
 
     async def stream(self, request: Request) -> AsyncIterator[StreamEvent]:
-        import asyncio
-
-        provider, routed = await asyncio.to_thread(self._target, request, streaming=True)
+        provider, routed = await self._async_target(request, streaming=True)
         events = achecked_stream(provider.stream(routed), provider=provider.provider)
         async with aclosing_stream(events):
             async for event in events:

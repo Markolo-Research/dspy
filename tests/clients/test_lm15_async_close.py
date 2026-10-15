@@ -56,3 +56,38 @@ async def test_close_waits_for_engine_lock_off_loop(monkeypatch, cancel):
                 await closing
             except asyncio.CancelledError:
                 pass
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", [False, True])
+async def test_engine_construction_is_drained_on_cancellation(monkeypatch, failure):
+    engine = AsyncLM15Engine()
+    entered, release, finished = threading.Event(), threading.Event(), threading.Event()
+
+    def target(request, *, streaming=False):
+        entered.set()
+        assert release.wait(3)
+        finished.set()
+        if failure:
+            raise ValueError("construction failed")
+        return object(), request
+
+    monkeypatch.setattr(engine, "_target", target)
+    operation = asyncio.create_task(engine.complete(object()))
+    try:
+        assert await asyncio.to_thread(entered.wait, 1)
+        operation.cancel()
+        await asyncio.sleep(0.02)
+        operation.cancel()
+        await asyncio.sleep(0.02)
+        assert not operation.done()
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await operation
+        assert finished.is_set()
+    finally:
+        release.set()
+        try:
+            await operation
+        except asyncio.CancelledError:
+            pass
