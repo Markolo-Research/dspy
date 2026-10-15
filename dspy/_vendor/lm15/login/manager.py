@@ -25,6 +25,7 @@ rewritten.
 
 from __future__ import annotations
 
+import contextvars
 import os
 import secrets
 import threading
@@ -44,6 +45,7 @@ __all__ = ["Auth", "AsyncAuth", "ForgetResult", "RENEWAL_LEAD_S"]
 
 RENEWAL_LEAD_S = 300.0  # AUTH-20.3: min(300 s, lifetime / 10)
 _ASYNC_READ_SLOTS = threading.BoundedSemaphore(4)
+_ASYNC_LOGIN_SLOTS = threading.BoundedSemaphore(4)
 
 
 def _now_iso(clock: Callable[[], float]) -> str:
@@ -1032,7 +1034,7 @@ class AsyncAuth:
                 pass  # A cancelled read may finish after its loop has closed.
 
         try:
-            threading.Thread(target=read, daemon=True, name="lm15-read").start()
+            threading.Thread(target=contextvars.copy_context().run, args=(read,), daemon=True, name="lm15-read").start()
         except BaseException:
             slots.release()
             raise
@@ -1047,6 +1049,7 @@ class AsyncAuth:
     async def login(self, provider: str, method: Any = None, **kwargs: Any):
         import asyncio
 
+        slots = _ASYNC_LOGIN_SLOTS
         cancel = kwargs.get("cancel") or threading.Event()
         kwargs["cancel"] = cancel
         attempt_id = f"at_{secrets.token_urlsafe(16)}"
@@ -1069,13 +1072,21 @@ class AsyncAuth:
                 result = self.sync.login(provider, method, **kwargs)
             except BaseException as exc:
                 error = exc
+            finally:
+                slots.release()
             try:
                 loop.call_soon_threadsafe(deliver, result, error)
             except RuntimeError:
                 pass  # The loop closed after cancellation; no result can be delivered.
 
         # An uninterruptible terminal prompt must not hold asyncio.run() shutdown.
-        threading.Thread(target=run_login, daemon=True, name="lm15-login").start()
+        while not slots.acquire(blocking=False):
+            await asyncio.sleep(0.01)
+        try:
+            threading.Thread(target=contextvars.copy_context().run, args=(run_login,), daemon=True, name="lm15-login").start()
+        except BaseException:
+            slots.release()
+            raise
         try:
             return await worker
         except asyncio.CancelledError:
